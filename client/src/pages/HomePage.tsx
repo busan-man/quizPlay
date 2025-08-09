@@ -44,14 +44,14 @@ const HomePage = () => {
                 {isAuthenticated ? (
                   user?.role === 'teacher' ? (
                     <Link
-                      to="/teacher"
+                      to="/teacher/dashboard"
                       className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
                     >
                       Go to Dashboard
                     </Link>
                   ) : (
                     <Link
-                      to="/student"
+                      to="/student/join"
                       className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
                     >
                       Join a Game

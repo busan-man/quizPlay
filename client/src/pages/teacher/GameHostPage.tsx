@@ -17,7 +17,8 @@ import {
   Clock, 
   Play, 
   ChevronRight, 
-  BarChart3 
+  BarChart3,
+  Gamepad2
 } from 'lucide-react';
 
 interface Player {
@@ -169,6 +170,14 @@ const GameHostPage = () => {
     
     sendNextQuestion();
   };
+
+  const handleUnityHostMode = () => {
+    if (!gameId || !user) return;
+    
+    // Unity WebGL 호스트 페이지로 이동
+    const unityUrl = `/unity?gameId=${gameId}&playerId=${user.id}&playerName=${encodeURIComponent(user.name || '')}&isHost=true`;
+    window.location.href = unityUrl;
+  };
   
   if (loading) {
     return (
@@ -258,6 +267,15 @@ const GameHostPage = () => {
               <p className="text-yellow-800">
                 Waiting for players to join. Share the game code with your students.
               </p>
+              <div className="mt-4">
+                <button
+                  onClick={handleUnityHostMode}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+                >
+                  <Gamepad2 className="h-5 w-5 mr-2" />
+                  Unity 호스트 모드로 시작
+                </button>
+              </div>
             </div>
           )}
           

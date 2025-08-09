@@ -47,7 +47,15 @@ const JoinGamePage = () => {
       setGameInfo(response.gameId, response.playerId, response.playerName);
       
       toast.success('Joined game successfully!');
-      navigate(`/game/${response.gameId}`);
+      
+      // 캐릭터 선택 페이지로 이동
+      navigate('/student/character-select', {
+        state: {
+          gameCode: data.gameCode,
+          playerName: response.playerName,
+          playerId: response.playerId
+        }
+      });
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to join game';
       toast.error(message);

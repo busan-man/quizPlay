@@ -33,11 +33,13 @@ export const createGame = async (req: Request, res: Response) => {
     await game.save();
 
     res.status(201).json({
+      _id: game._id,
       gameId: game._id,
       gameCode: game.gameCode,
       title: game.title,
       status: game.status,
-      mode: game.mode
+      mode: game.mode,
+      hostId: game.createdBy
     });
   } catch (error) {
     console.error('Create game error:', error);
@@ -190,6 +192,63 @@ export const endGame = async (req: Request, res: Response) => {
     res.json({ message: 'Game ended successfully', gameId: game._id });
   } catch (error) {
     console.error('End game error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get game results
+export const getGameResults = async (req: Request, res: Response) => {
+  try {
+    const game = await Game.findById(req.params.id)
+      .populate('questions', 'prompt type options points');
+
+    if (!game) {
+      return res.status(404).json({ message: 'Game not found' });
+    }
+
+    // Verify teacher is the creator
+    if (req.user?.id !== game.createdBy.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Calculate final results
+    const results = game.players
+      .filter(p => p.isActive)
+      .sort((a, b) => b.score - a.score)
+      .map((player, index) => ({
+        playerId: player.id,
+        playerName: player.name,
+        finalScore: player.score,
+        correctAnswers: 0, // This would need to be tracked separately
+        totalQuestions: game.questions.length,
+        rank: index + 1,
+        characterId: player.characterId
+      }));
+
+    // Calculate statistics
+    const stats = {
+      totalPlayers: results.length,
+      averageScore: results.length > 0 ? Math.round(results.reduce((sum, r) => sum + r.finalScore, 0) / results.length) : 0,
+      highestScore: results.length > 0 ? results[0].finalScore : 0,
+      totalQuestions: game.questions.length,
+      gameDuration: game.endedAt && game.startedAt ? 
+        Math.round((new Date(game.endedAt).getTime() - new Date(game.startedAt).getTime()) / 1000 / 60) : 0
+    };
+
+    res.json({
+      results,
+      stats,
+      game: {
+        id: game._id,
+        title: game.title,
+        gameCode: game.gameCode,
+        status: game.status,
+        startedAt: game.startedAt,
+        endedAt: game.endedAt
+      }
+    });
+  } catch (error) {
+    console.error('Get game results error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

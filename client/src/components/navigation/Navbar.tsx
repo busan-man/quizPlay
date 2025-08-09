@@ -34,7 +34,7 @@ const Navbar = () => {
                 {user?.role === 'teacher' && (
                   <>
                     <Link
-                      to="/teacher"
+                      to="/teacher/dashboard"
                       className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
                     >
                       Dashboard
@@ -50,7 +50,7 @@ const Navbar = () => {
 
                 {user?.role === 'student' && (
                   <Link
-                    to="/student"
+                    to="/student/join"
                     className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
                   >
                     Join Game
@@ -130,7 +130,7 @@ const Navbar = () => {
                   {user?.role === 'teacher' && (
                     <>
                       <Link
-                        to="/teacher"
+                        to="/teacher/dashboard"
                         className="block px-4 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -148,7 +148,7 @@ const Navbar = () => {
 
                   {user?.role === 'student' && (
                     <Link
-                      to="/student"
+                      to="/student/join"
                       className="block px-4 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
                       onClick={() => setIsMenuOpen(false)}
                     >

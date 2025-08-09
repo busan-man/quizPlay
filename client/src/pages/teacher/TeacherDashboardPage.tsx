@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Play, Clock, Users, Trash, Edit } from 'lucide-react';
 import { getTeacherGames, startGame, endGame } from '../../api/game';
 import toast from 'react-hot-toast';
@@ -16,6 +16,7 @@ interface Game {
 }
 
 const TeacherDashboardPage = () => {
+  const navigate = useNavigate();
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -27,11 +28,13 @@ const TeacherDashboardPage = () => {
   const loadGames = async () => {
     try {
       setLoading(true);
+      console.log('게임 목록 로딩 중...');
       const gamesData = await getTeacherGames();
+      console.log('게임 목록 로딩 완료:', gamesData);
       setGames(gamesData);
     } catch (error) {
+      console.error('게임 목록 로딩 실패:', error);
       toast.error('Failed to load games');
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,15 @@ const TeacherDashboardPage = () => {
       setActionInProgress(gameId);
       await startGame(gameId);
       toast.success('Game started successfully');
-      loadGames();
+      // games 배열에서 해당 게임 정보 찾기
+      const game = games.find(g => g._id === gameId);
+      if (game && game.mode === 'quiz') {
+              // Unity 게임만 표시하는 페이지로 이동
+      navigate(`/unity?role=teacher&code=${game.gameCode}&gameId=${game._id}`);
+      } else {
+        // 다른 모드는 기존대로 대시보드 새로고침
+        loadGames();
+      }
     } catch (error) {
       toast.error('Failed to start game');
       console.error(error);
@@ -63,6 +74,26 @@ const TeacherDashboardPage = () => {
     } finally {
       setActionInProgress(null);
     }
+  };
+
+  const handleUnityHost = (game: Game) => {
+    // Unity 게임만 표시하는 페이지로 이동
+    navigate(`/unity?role=teacher&code=${game.gameCode}&gameId=${game._id}`);
+  };
+
+  // Host 버튼: 진행 중인 게임이면 Unity로 이동
+  const handleHost = (game: Game) => {
+    if (game.mode === 'quiz') {
+      // 진행 중인 게임 재입장 - Unity 게임만 표시
+      navigate(`/unity?role=teacher&code=${game.gameCode}&gameId=${game._id}`);
+    } else {
+      // 기존 호스트 페이지로 이동
+      navigate(`/teacher/host/${game._id}`);
+    }
+  };
+  // Review 버튼: 리뷰 페이지로 이동
+  const handleReview = (game: Game) => {
+    navigate(`/teacher/review/${game.gameCode}`);
   };
 
   const renderGameCard = (game: Game) => {
@@ -140,22 +171,25 @@ const TeacherDashboardPage = () => {
                 </button>
               )}
               
-              <Link
-                to={`/teacher/host/${game._id}`}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
-              >
-                {game.status === 'active' ? (
-                  <>
-                    <Play className="h-4 w-4 mr-1" />
-                    Host
-                  </>
-                ) : (
-                  <>
-                    <Edit className="h-4 w-4 mr-1" />
-                    View
-                  </>
-                )}
-              </Link>
+              {/* 진행 중(lobby, active)일 때만 Host 버튼 */}
+              {(game.status === 'lobby' || game.status === 'active') && (
+                <button
+                  onClick={() => handleHost(game)}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Host
+                </button>
+              )}
+              {/* 끝난 게임이면 Review 버튼 */}
+              {game.status === 'finished' && (
+                <button
+                  onClick={() => handleReview(game)}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none"
+                >
+                  Review
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -178,7 +212,10 @@ const TeacherDashboardPage = () => {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading games...</p>
+          </div>
         </div>
       ) : games.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 mb-8">

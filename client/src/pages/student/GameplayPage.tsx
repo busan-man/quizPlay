@@ -8,7 +8,7 @@ import {
   leaveGameRoom
 } from '../../socket/socket';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Award, AlertCircle, Check, X } from 'lucide-react';
+import { Clock, Award, AlertCircle, Check, X, Gamepad2 } from 'lucide-react';
 
 const GameplayPage = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -30,6 +30,8 @@ const GameplayPage = () => {
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
   const [leaderboard, setLeaderboard] = useState<{ id: string; name: string; score: number }[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showUnityOption, setShowUnityOption] = useState(false);
+  const [useUnity, setUseUnity] = useState(false);
   
   // Find current player in leaderboard
   const currentPlayerRank = leaderboard.findIndex(p => p.id === playerId);
@@ -39,6 +41,9 @@ const GameplayPage = () => {
       navigate('/student');
       return;
     }
+    
+    // Unity 옵션 표시 (첫 번째 질문에서만)
+    setShowUnityOption(true);
     
     // Initialize socket connection
     const socket = getSocket();
@@ -116,8 +121,22 @@ const GameplayPage = () => {
     submitAnswer(selectedAnswer, timeLeft);
     setHasAnswered(true);
   };
+
+  const handleUnityMode = () => {
+    setUseUnity(true);
+    setShowUnityOption(false);
+    
+    // Unity WebGL 페이지로 이동
+    const unityUrl = `/unity?gameId=${gameId}&playerId=${playerId}&playerName=${encodeURIComponent(playerName || '')}&isHost=false`;
+    window.open(unityUrl, '_blank');
+  };
+
+  const handleWebMode = () => {
+    setUseUnity(false);
+    setShowUnityOption(false);
+  };
   
-  if (!currentQuestion && !showLeaderboard) {
+  if (!currentQuestion && !showLeaderboard && !showUnityOption) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-white p-8">
         <div className="animate-pulse mb-4">
@@ -127,6 +146,40 @@ const GameplayPage = () => {
         <p className="text-gray-400 text-center">
           The game will begin when the teacher sends the first question.
         </p>
+      </div>
+    );
+  }
+
+  // Unity 모드 선택 화면
+  if (showUnityOption) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-white p-8">
+        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full">
+          <h2 className="text-2xl font-bold mb-6 text-center">게임 모드 선택</h2>
+          
+          <div className="space-y-4">
+            <button
+              onClick={handleUnityMode}
+              className="w-full p-4 bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center justify-center space-x-3 transition-colors"
+            >
+              <Gamepad2 className="h-6 w-6" />
+              <span className="text-lg font-medium">Unity WebGL 모드</span>
+            </button>
+            
+            <button
+              onClick={handleWebMode}
+              className="w-full p-4 bg-gray-600 hover:bg-gray-700 rounded-lg flex items-center justify-center space-x-3 transition-colors"
+            >
+              <Award className="h-6 w-6" />
+              <span className="text-lg font-medium">웹 모드</span>
+            </button>
+          </div>
+          
+          <div className="mt-6 text-sm text-gray-400 text-center">
+            <p>Unity WebGL 모드: 더 나은 그래픽과 게임 경험</p>
+            <p>웹 모드: 빠른 로딩과 간단한 인터페이스</p>
+          </div>
+        </div>
       </div>
     );
   }

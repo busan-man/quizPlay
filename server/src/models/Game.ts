@@ -18,6 +18,7 @@ interface IPlayer {
   score: number;
   isActive: boolean;
   currentQuestion?: number;
+  characterId?: string;
 }
 
 export interface IGame {
@@ -77,7 +78,8 @@ const gameSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     },
-    currentQuestion: Number
+    currentQuestion: Number,
+    characterId: String
   }],
   currentQuestion: {
     type: Number,

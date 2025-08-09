@@ -11,6 +11,9 @@ interface AuthenticatedSocket extends Socket {
   user?: SocketUser;
   gameId?: string;
   playerId?: string;
+  gameCode?: string;
+  playerName?: string;
+  characterId?: string;
 }
 
 export const setupSocketHandlers = (io: Server) => {
@@ -38,9 +41,83 @@ export const setupSocketHandlers = (io: Server) => {
   io.on('connection', (socket: AuthenticatedSocket) => {
     console.log('New socket connection:', socket.id);
 
-    // Join a game room
-    socket.on('join-game', async ({ gameId, playerId }) => {
+    // Join a game as student (Unity integration)
+    socket.on('joinGame', async ({ gameCode, playerName, characterId }) => {
       try {
+        const game = await Game.findOne({ gameCode });
+        
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+
+        if (game.status === GameStatus.FINISHED) {
+          socket.emit('error', { message: 'Game has already ended' });
+          return;
+        }
+
+        // Generate a unique player ID
+        const playerId = `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        // Check for duplicate name
+        const isDuplicateName = game.players.some(player => player.name === playerName);
+        if (isDuplicateName) {
+          socket.emit('error', { message: 'Player name already taken' });
+          return;
+        }
+
+        // Add player to game
+        game.players.push({
+          id: playerId,
+          name: playerName,
+          score: 0,
+          isActive: true,
+          characterId: characterId
+        });
+
+        await game.save();
+
+        // Store game info in socket
+        socket.gameId = game._id.toString();
+        socket.gameCode = gameCode;
+        socket.playerId = playerId;
+        socket.playerName = playerName;
+        socket.characterId = characterId;
+        
+        // Join the game room
+        socket.join(`game:${game._id}`);
+        
+        // Notify everyone about new player
+        io.to(`game:${game._id}`).emit('playerJoined', {
+          id: playerId,
+          name: playerName,
+          score: 0,
+          characterId: characterId,
+          isActive: true
+        });
+
+        // Send current game state to the player
+        socket.emit('gameJoined', {
+          gameId: game._id,
+          playerId: playerId,
+          gameStatus: game.status,
+          currentPlayers: game.players.filter(p => p.isActive)
+        });
+        
+      } catch (error) {
+        console.error('Join game error:', error);
+        socket.emit('error', { message: 'Failed to join game' });
+      }
+    });
+
+    // Host a game as teacher (Unity integration)
+    socket.on('hostGame', async ({ gameId, gameCode }) => {
+      try {
+        if (!socket.user) {
+          socket.emit('error', { message: 'Not authenticated' });
+          return;
+        }
+
         const game = await Game.findById(gameId);
         
         if (!game) {
@@ -48,70 +125,259 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
+        // Verify user is the game creator
+        if (socket.user.id !== game.createdBy.toString()) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+
         // Store game info in socket
         socket.gameId = gameId;
-        socket.playerId = playerId;
+        socket.gameCode = gameCode;
         
         // Join the game room
         socket.join(`game:${gameId}`);
         
-        // Notify everyone about new player
-        if (playerId) {
-          io.to(`game:${gameId}`).emit('player-joined', {
-            playerId,
-            playerCount: game.players.length
-          });
-        }
+        // Send current game state to the host
+        socket.emit('gameHosted', {
+          gameId: game._id,
+          gameCode: game.gameCode,
+          gameStatus: game.status,
+          currentPlayers: game.players.filter(p => p.isActive),
+          questions: game.questions.length
+        });
         
-        // If it's the teacher joining
-        if (socket.user && socket.user.id === game.createdBy.toString()) {
-          socket.emit('game-state', {
-            game: {
-              _id: game._id,
-              title: game.title,
-              status: game.status,
-              players: game.players,
-              currentQuestion: game.currentQuestion
-            }
-          });
-        }
       } catch (error) {
-        console.error('Join game error:', error);
-        socket.emit('error', { message: 'Failed to join game' });
+        console.error('Host game error:', error);
+        socket.emit('error', { message: 'Failed to host game' });
       }
     });
 
-    // Leave game
-    socket.on('leave-game', async () => {
-      if (socket.gameId) {
-        socket.leave(`game:${socket.gameId}`);
+    // Start game (teacher only)
+    socket.on('startGame', async ({ gameId }) => {
+      try {
+        if (!socket.user || !socket.gameId) {
+          socket.emit('error', { message: 'Not authenticated or not in a game' });
+          return;
+        }
         
-        if (socket.playerId) {
-          try {
-            const game = await Game.findById(socket.gameId);
-            if (game) {
-              // Mark player as inactive
-              const playerIndex = game.players.findIndex(p => p.id === socket.playerId);
-              
-              if (playerIndex !== -1) {
-                game.players[playerIndex].isActive = false;
-                await game.save();
-                
-                io.to(`game:${socket.gameId}`).emit('player-left', {
-                  playerId: socket.playerId,
-                  playerCount: game.players.filter(p => p.isActive).length
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Leave game error:', error);
+        const game = await Game.findById(gameId);
+        
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+        
+        // Verify user is the game creator
+        if (socket.user.id !== game.createdBy.toString()) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+        
+        if (game.status !== GameStatus.LOBBY) {
+          socket.emit('error', { message: 'Game has already started or ended' });
+          return;
+        }
+
+        game.status = GameStatus.ACTIVE;
+        game.startedAt = new Date();
+        game.currentQuestion = 0;
+        await game.save();
+
+        // Notify all players that game has started
+        io.to(`game:${gameId}`).emit('gameStarted', {
+          gameId: game._id,
+          startedAt: game.startedAt,
+          totalQuestions: game.questions.length
+        });
+        
+      } catch (error) {
+        console.error('Start game error:', error);
+        socket.emit('error', { message: 'Failed to start game' });
+      }
+    });
+
+    // End game (teacher only)
+    socket.on('endGame', async ({ gameId }) => {
+      try {
+        if (!socket.user || !socket.gameId) {
+          socket.emit('error', { message: 'Not authenticated or not in a game' });
+          return;
+        }
+        
+        const game = await Game.findById(gameId);
+        
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+        
+        // Verify user is the game creator
+        if (socket.user.id !== game.createdBy.toString()) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+        
+        if (game.status !== GameStatus.ACTIVE) {
+          socket.emit('error', { message: 'Game is not active' });
+          return;
+        }
+
+        game.status = GameStatus.FINISHED;
+        game.endedAt = new Date();
+        await game.save();
+
+        // Calculate final results
+        const results = game.players
+          .filter(p => p.isActive)
+          .sort((a, b) => b.score - a.score)
+          .map((player, index) => ({
+            playerId: player.id,
+            playerName: player.name,
+            finalScore: player.score,
+            correctAnswers: 0, // This would need to be tracked separately
+            totalQuestions: game.questions.length,
+            rank: index + 1,
+            characterId: player.characterId
+          }));
+
+        // Notify all players that game has ended
+        io.to(`game:${gameId}`).emit('gameEnded', results);
+        
+      } catch (error) {
+        console.error('End game error:', error);
+        socket.emit('error', { message: 'Failed to end game' });
+      }
+    });
+
+    // Submit answer from Unity
+    socket.on('submitAnswer', async ({ gameCode, playerName, answer, questionId }) => {
+      try {
+        if (!socket.gameId || !socket.playerId) {
+          socket.emit('error', { message: 'Not in a game' });
+          return;
+        }
+        
+        const game = await Game.findById(socket.gameId)
+          .populate('questions');
+        
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+        
+        if (game.status !== GameStatus.ACTIVE) {
+          socket.emit('error', { message: 'Game is not active' });
+          return;
+        }
+        
+        // Get the current question
+        const questionIndex = game.currentQuestion - 1;
+        if (questionIndex < 0 || questionIndex >= game.questions.length) {
+          socket.emit('error', { message: 'Invalid question' });
+          return;
+        }
+        
+        const question = game.questions[questionIndex];
+        
+        // Check if the answer is correct
+        const isCorrect = Array.isArray((question as any).correctAnswer)
+          ? (question as any).correctAnswer.includes(answer)
+          : (question as any).correctAnswer === answer;
+        
+        let pointsEarned = 0;
+        
+        if (isCorrect) {
+          pointsEarned = (question as any).points || 100;
+          
+          // Find player and update score
+          const playerIndex = game.players.findIndex(p => p.id === socket.playerId);
+          
+          if (playerIndex !== -1) {
+            game.players[playerIndex].score += pointsEarned;
+            await game.save();
           }
         }
+        
+        // Send result to the player
+        socket.emit('answerResult', {
+          correct: isCorrect,
+          pointsEarned,
+          correctAnswer: (question as any).correctAnswer,
+          playerName: socket.playerName
+        });
+        
+        // Notify all players about the answer
+        io.to(`game:${socket.gameId}`).emit('answerResult', {
+          playerId: socket.playerId,
+          playerName: socket.playerName,
+          correct: isCorrect,
+          pointsEarned,
+          answer: answer
+        });
+        
+        // Send updated scores to everyone
+        io.to(`game:${socket.gameId}`).emit('scoreUpdate', {
+          playerId: socket.playerId,
+          newScore: game.players.find(p => p.id === socket.playerId)?.score || 0,
+          players: game.players
+            .filter(p => p.isActive)
+            .sort((a, b) => b.score - a.score)
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              score: p.score,
+              characterId: p.characterId
+            }))
+        });
+        
+      } catch (error) {
+        console.error('Submit answer error:', error);
+        socket.emit('error', { message: 'Failed to submit answer' });
+      }
+    });
+
+    // Game complete from Unity
+    socket.on('gameComplete', async ({ gameCode, playerName, finalScore, correctAnswers, totalQuestions }) => {
+      try {
+        if (!socket.gameId || !socket.playerId) {
+          socket.emit('error', { message: 'Not in a game' });
+          return;
+        }
+        
+        const game = await Game.findById(socket.gameId);
+        
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+        
+        // Update player's final score and stats
+        const playerIndex = game.players.findIndex(p => p.id === socket.playerId);
+        
+        if (playerIndex !== -1) {
+          game.players[playerIndex].score = finalScore;
+          // You might want to store additional stats like correctAnswers, totalQuestions
+          await game.save();
+        }
+        
+        // Notify all players about the completion
+        io.to(`game:${socket.gameId}`).emit('playerGameComplete', {
+          playerId: socket.playerId,
+          playerName: playerName,
+          finalScore: finalScore,
+          correctAnswers: correctAnswers,
+          totalQuestions: totalQuestions
+        });
+        
+      } catch (error) {
+        console.error('Game complete error:', error);
+        socket.emit('error', { message: 'Failed to complete game' });
       }
     });
 
     // Send next question (teacher only)
-    socket.on('next-question', async () => {
+    socket.on('nextQuestion', async () => {
       try {
         if (!socket.user || !socket.gameId) {
           socket.emit('error', { message: 'Not authenticated or not in a game' });
@@ -146,108 +412,24 @@ export const setupSocketHandlers = (io: Server) => {
         // Get the current question
         const question = game.questions[game.currentQuestion] as any;
         const questionForPlayers = {
-          prompt: (question as any).prompt,
-          type: (question as any).type,
-          options: (question as any).options,
-          points: (question as any).points,
-          timeLimit: (question as any).timeLimit
+          id: question._id,
+          prompt: question.prompt,
+          type: question.type,
+          options: question.options,
+          points: question.points,
+          timeLimit: question.timeLimit
         };
         
         // Send question to all players in the game
-        io.to(`game:${socket.gameId}`).emit('question', {
-          question: questionForPlayers,
-          questionNumber: game.currentQuestion + 1,
-          totalQuestions: game.questions.length
-        });
+        io.to(`game:${socket.gameId}`).emit('questionUpdate', questionForPlayers);
         
         // Increment the current question counter
         game.currentQuestion += 1;
         await game.save();
+        
       } catch (error) {
         console.error('Next question error:', error);
         socket.emit('error', { message: 'Failed to send next question' });
-      }
-    });
-
-    // Submit answer
-    socket.on('submit-answer', async ({ answer, timeRemaining }) => {
-      try {
-        if (!socket.gameId || !socket.playerId) {
-          socket.emit('error', { message: 'Not in a game' });
-          return;
-        }
-        
-        const game = await Game.findById(socket.gameId)
-          .populate('questions');
-        
-        if (!game) {
-          socket.emit('error', { message: 'Game not found' });
-          return;
-        }
-        
-        if (game.status !== GameStatus.ACTIVE) {
-          socket.emit('error', { message: 'Game is not active' });
-          return;
-        }
-        
-        // Get the current question (considering it's 0-indexed)
-        const questionIndex = game.currentQuestion - 1;
-        if (questionIndex < 0 || questionIndex >= game.questions.length) {
-          socket.emit('error', { message: 'Invalid question' });
-          return;
-        }
-        
-        const question = game.questions[questionIndex];
-        
-        // Check if the answer is correct
-        const isCorrect = Array.isArray((question as any).correctAnswer)
-          ? (question as any).correctAnswer.includes(answer)
-          : (question as any).correctAnswer === answer;
-        
-        let pointsEarned = 0;
-        
-        if (isCorrect) {
-          // Calculate points based on time remaining
-          const timePercent = timeRemaining / ((question as any).timeLimit || 30);
-          pointsEarned = Math.round((question as any).points * (0.5 + 0.5 * timePercent));
-          
-          // Find player and update score
-          const playerIndex = game.players.findIndex(p => p.id === socket.playerId);
-          
-          if (playerIndex !== -1) {
-            game.players[playerIndex].score += pointsEarned;
-            await game.save();
-          }
-        }
-        
-        // Send result to the player
-        socket.emit('answer-result', {
-          correct: isCorrect,
-          pointsEarned,
-          correctAnswer: (question as any).correctAnswer
-        });
-        
-        // Notify teacher about the answer
-        io.to(`game:${socket.gameId}`).emit('player-answer', {
-          playerId: socket.playerId,
-          correct: isCorrect,
-          pointsEarned
-        });
-        
-        // Send updated scores to everyone
-        io.to(`game:${socket.gameId}`).emit('update-scores', {
-          players: game.players
-            .filter(p => p.isActive)
-            .sort((a, b) => b.score - a.score)
-            .map(p => ({
-              id: p.id,
-              name: p.name,
-              score: p.score
-            }))
-        });
-      } catch (error) {
-        console.error('Submit answer error:', error);
-        socket.emit('error', { message: 'Failed to submit answer' });
       }
     });
 
@@ -267,10 +449,7 @@ export const setupSocketHandlers = (io: Server) => {
               game.players[playerIndex].isActive = false;
               await game.save();
               
-              io.to(`game:${socket.gameId}`).emit('player-left', {
-                playerId: socket.playerId,
-                playerCount: game.players.filter(p => p.isActive).length
-              });
+              io.to(`game:${socket.gameId}`).emit('playerLeft', socket.playerId);
             }
           }
         } catch (error) {

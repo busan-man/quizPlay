@@ -1,7 +1,7 @@
 import express from 'express';
 import { 
   createGame, getTeacherGames, getGameById, 
-  joinGame, startGame, endGame 
+  joinGame, startGame, endGame, getGameResults
 } from '../controllers/gameController';
 import { authMiddleware, authorizeRoles } from '../middleware/auth';
 import { UserRole } from '../models/User';
@@ -26,6 +26,14 @@ router.get(
 
 // Get a game by ID
 router.get('/:id', authMiddleware, getGameById);
+
+// Get game results (teacher only)
+router.get(
+  '/:id/results', 
+  authMiddleware, 
+  authorizeRoles(UserRole.TEACHER), 
+  getGameResults
+);
 
 // Join a game as student
 router.post('/join', joinGame);

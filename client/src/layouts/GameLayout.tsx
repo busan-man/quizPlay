@@ -52,7 +52,7 @@ const GameLayout = () => {
             <div className="h-full bg-indigo-500 rounded-full animate-[loading_1.5s_ease-in-out_infinite]"></div>
           </div>
         </div>
-      )}         
+      )}
 
       {/* This is where Unity WebGL would be embedded in production */}
       <div className={`relative w-full h-full ${unityLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}>

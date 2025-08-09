@@ -79,6 +79,8 @@ const CreateQuizPage = () => {
       });
       
       toast.success('Quiz created successfully!');
+      
+      // 성공 시
       navigate('/teacher');
     } catch (error) {
       toast.error('Failed to create quiz');
