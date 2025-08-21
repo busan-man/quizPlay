@@ -1,0 +1,7 @@
+<linker>
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="SocketManager" preserve="all"/>
+    <type fullname="BootLoader" preserve="all"/>
+    <type fullname="WebCommunicationController" preserve="all"/>
+  </assembly>
+</linker> 

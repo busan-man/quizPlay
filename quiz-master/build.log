@@ -1,0 +1,81 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Successfully connected to the License Client on channel: "LicenseClient-qd011"
+[Licensing::Client] Error: Code 10 while verifying Licensing Client signature (process Id: 40656, path: "C:/Program Files/Unity Hub/UnityLicensingClient_V1/Unity.Licensing.Client.exe")
+[Licensing::Module] Error: LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.17.0+aa6cfba
+  Session Id:              ee7c691df59140cb839a6d040435a487
+  Correlation Id:          1d9e14a096adf351e6deddc770f27c4a
+  External correlation Id: 6518259076061697481
+  Machine Id:              9O64pSgFfVP5JDBpsiGXMFHqIg4=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-qd011" (connect: 0.00s, validation: 0.02s, handshake: 0.05s)
+[Licensing::IpcConnector] Successfully connected to the License Notification on channel: "LicenseClient-qd011-notifications"
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully updated license
+Built from '2022.3/release' branch; Version is '2022.3.5f1 (9674261d40ee) revision 9860134'; Using compiler version '192829333'; Build Type 'Release'
+OS: 'Windows 11  (10.0.26100) 64bit Core' Language: 'ko' Physical Memory: 15931 MB
+[Licensing::Client] Successfully resolved entitlements
+[Licensing::Module] Serial number assigned to: "14569638704601-UnityPersXXXX"
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1, IsPro: 0
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\2022.3.5f1\Editor\Unity.exe
+-batchmode
+-quit
+-projectPath
+.
+-buildTarget
+WebGL
+-logFile
+build.log
+Successfully changed project path to: C:/Users/qd011/OneDrive/Desktop/quizplay/quiz-master
+C:/Users/qd011/OneDrive/Desktop/quizplay/quiz-master
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [29624] Host "[IP] 192.168.0.4 [Port] 55496 [Flags] 2 [Guid] 78981995 [EditorId] 78981995 [Version] 1048832 [Id] WindowsEditor(7,User) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" joined multi-casting on [225.0.0.222:54997]...
+
+Player connection [29624] Host "[IP] 192.168.0.4 [Port] 55496 [Flags] 2 [Guid] 78981995 [EditorId] 78981995 [Version] 1048832 [Id] WindowsEditor(7,User) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" joined alternative multi-casting on [225.0.0.222:34997]...
+
+[Package Manager] UpmClient::Connect -- Connected to IPC stream "Upm-28052" after 0.2 seconds.
+Source asset database is recreated because source asset version has changed
+ArtifactDBVersion changed from '0x01f5f63b' to '0x5ce21767'
+[Licensing::Client] Successfully resolved entitlements
+[Package Manager] Done resolving packages in 87.65 seconds
+[Licensing::Client] Successfully resolved entitlement details
+An error occurred while resolving packages:
+  Project has invalid dependencies:
+    com.unity.feature.2d: Package [com.unity.feature.2d@2.0.1] cannot be found
+    com.unity.modules.accessibility: Package [com.unity.modules.accessibility@1.0.0] cannot be found
+    com.unity.multiplayer.center: Package [com.unity.multiplayer.center@1.0.0] cannot be found
+    com.unity.test-framework: Package [com.unity.test-framework@1.5.1] cannot be found
+    com.unity.ugui: Package [com.unity.ugui@2.0.0] cannot be found
+Exiting without the bug reporter. Application will terminate with return code 1

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity Web Player | quiz-master</title>
+  </head>
+  <body style="text-align: center; padding: 0; border: 0; margin: 0;">
+    <canvas id="unity-canvas" width=640 height=360 tabindex="-1" style="width: 640px; height: 360px; background: #231F20"></canvas>
+    <script src="Build/unity.loader.js"></script>
+    <script>
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+
+        var canvas = document.querySelector("#unity-canvas");
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.position = "fixed";
+
+        document.body.style.textAlign = "left";
+      }
+
+      // Unity 인스턴스를 전역 변수로 저장
+      createUnityInstance(document.querySelector("#unity-canvas"), {
+        arguments: [],
+        dataUrl: "Build/unity.data",
+        frameworkUrl: "Build/unity.framework.js",
+        codeUrl: "Build/unity.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "quiz-master",
+        productVersion: "1",
+      }).then((unityInstance) => {
+        // 전역 변수에 인스턴스 저장 (중요!)
+        window.unityInstance = unityInstance;
+        window.Module = unityInstance.Module;
+        
+        console.log('Unity 인스턴스 생성 완료:', unityInstance);
+        console.log('window.unityInstance 설정됨:', !!window.unityInstance);
+        console.log('window.Module 설정됨:', !!window.Module);
+        
+        // Unity 준비 완료 신호 전송
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'unity-instance-ready' }, '*');
+          console.log('부모 창에 unity-instance-ready 신호 전송');
+        }
+      }).catch((error) => {
+        console.error('Unity 인스턴스 생성 실패:', error);
+      });
+    </script>
+  </body>
+</html> 
